@@ -3,41 +3,32 @@ on:
   push:
     branches: [ "main" ]
   workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: 8.5
+
       - name: Create Project
         run: |
           mkdir -p app/src/main/java/com/ranahna/app
-          mkdir -p gradle/wrapper
-          cat > gradle/wrapper/gradle-wrapper.properties << 'PROP'
-          distributionBase=GRADLE_USER_HOME
-          distributionPath=wrapper/dists
-          distributionUrl=https\://services.gradle.org/distributions/gradle-8.5-bin.zip
-          networkTimeout=10000
-          zipStoreBase=GRADLE_USER_HOME
-          zipStorePath=wrapper/dists
-          PROP
-          cat > gradlew << 'GW'
-          #!/bin/sh
-          JAR="gradle/wrapper/gradle-wrapper.jar"
-          if [ ! -f "$JAR" ]; then
-            curl -sL -o "$JAR" https://github.com/gradle/gradle/raw/v8.5.0/gradle/wrapper/gradle-wrapper.jar
-          fi
-          exec java -jar "$JAR" "$@"
-          GW
-          chmod +x gradlew
           cat > build.gradle << 'ROOT'
-          buildscript { repositories { google(); mavenCentral() } dependencies { classpath 'com.android.tools.build:gradle:8.2.1' } }
+          buildscript { 
+            repositories { google(); mavenCentral() } 
+            dependencies { classpath 'com.android.tools.build:gradle:8.2.1' } 
+          }
           allprojects { repositories { google(); mavenCentral() } }
           ROOT
           cat > settings.gradle << 'SET'
@@ -48,35 +39,72 @@ jobs:
           android {
             namespace 'com.ranahna.app'
             compileSdk 34
-            defaultConfig { applicationId "com.ranahna.app"; minSdk 22; targetSdk 34; versionCode 1; versionName "1.0" }
-            buildTypes { release { minifyEnabled false } debug { minifyEnabled false } }
-            compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+            defaultConfig { 
+              applicationId "com.ranahna.app"
+              minSdk 22
+              targetSdk 34
+              versionCode 1
+              versionName "1.0"
+            }
+            buildTypes {
+              release { minifyEnabled false }
+              debug { minifyEnabled false }
+            }
+            compileOptions {
+              sourceCompatibility JavaVersion.VERSION_17
+              targetCompatibility JavaVersion.VERSION_17
+            }
           }
-          dependencies { implementation 'androidx.appcompat:appcompat:1.6.1' }
+          dependencies {
+            implementation 'androidx.appcompat:appcompat:1.6.1'
+          }
           APP
           cat > app/src/main/AndroidManifest.xml << 'MF'
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
             <uses-permission android:name="android.permission.INTERNET" />
             <application android:label="Rana Hna" android:icon="@android:mipmap/sym_def_app_icon" android:theme="@android:style/Theme.NoTitleBar">
-              <activity android:name=".MainActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter></activity>
+              <activity android:name=".MainActivity" android:exported="true">
+                <intent-filter>
+                  <action android:name="android.intent.action.MAIN" />
+                  <category android:name="android.intent.category.LAUNCHER" />
+                </intent-filter>
+              </activity>
             </application>
           </manifest>
           MF
           cat > app/src/main/java/com/ranahna/app/MainActivity.java << 'JAVA'
           package com.ranahna.app;
-          import android.app.Activity; import android.os.Bundle; import android.webkit.WebSettings; import android.webkit.WebView; import android.webkit.WebViewClient;
+          import android.app.Activity;
+          import android.os.Bundle;
+          import android.webkit.WebSettings;
+          import android.webkit.WebView;
+          import android.webkit.WebViewClient;
           public class MainActivity extends Activity {
             private WebView w;
-            @Override protected void onCreate(Bundle b){ super.onCreate(b);
-              w=new WebView(this); WebSettings s=w.getSettings(); s.setJavaScriptEnabled(true); s.setDomStorageEnabled(true);
-              w.setWebViewClient(new WebViewClient()); w.loadUrl("https://acheltidjdit-debug.github.io/rana-hna-builder/"); setContentView(w);
+            @Override
+            protected void onCreate(Bundle b){
+              super.onCreate(b);
+              w=new WebView(this);
+              WebSettings s=w.getSettings();
+              s.setJavaScriptEnabled(true);
+              s.setDomStorageEnabled(true);
+              w.setWebViewClient(new WebViewClient());
+              w.loadUrl("https://acheltidjdit-debug.github.io/rana-hna-builder/");
+              setContentView(w);
             }
-            @Override public void onBackPressed(){ if(w.canGoBack()) w.goBack(); else super.onBackPressed(); }
+            @Override
+            public void onBackPressed(){
+              if(w.canGoBack()) w.goBack();
+              else super.onBackPressed();
+            }
           }
           JAVA
+          echo "Project created"
+
       - name: Build APK
-        run: ./gradlew assembleDebug --stacktrace
+        run: gradle assembleDebug --stacktrace
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
